@@ -21,11 +21,11 @@ internal static class HosepipeEndpoints
 
     private static async IAsyncEnumerable<ErrorEnvelopeInfo> GetMessages(
         string queueName,
-        IQueueReader queueReader,
+        IBroker broker,
         IErrorEnvelopeReader envelopeReader,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var message in queueReader.ReadMessagesAsync(queueName, cancellationToken))
+        await foreach (var message in broker.ReadMessagesAsync(queueName, cancellationToken))
         {
             yield return envelopeReader.Read(message);
         }
@@ -33,11 +33,11 @@ internal static class HosepipeEndpoints
 
     private static async Task<IResult> RetryAll(
         string queueName,
-        IMessageRetrier retrier,
+        IBroker broker,
         IErrorEnvelopeReader envelopeReader,
         CancellationToken cancellationToken)
     {
-        var retried = await retrier.RetryAllAsync(queueName, envelopeReader, cancellationToken);
+        var retried = await broker.RetryAllAsync(queueName, envelopeReader, cancellationToken);
         return Results.Ok(new RetryResult(RetriedCount: retried));
     }
 }

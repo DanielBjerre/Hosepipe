@@ -10,7 +10,7 @@ public sealed class RabbitMqQueueReaderTests(RabbitMqFixture fixture)
     public async Task ReadMessagesAsync_WithEmptyQueue_YieldsNothing()
     {
         var queueName = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
-        var reader = fixture.QueueReader;
+        var reader = fixture.Broker;
 
         var count = 0;
         await foreach (var _ in reader.ReadMessagesAsync(queueName, TestContext.Current.CancellationToken))
@@ -26,7 +26,7 @@ public sealed class RabbitMqQueueReaderTests(RabbitMqFixture fixture)
     {
         var queueName = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
         await fixture.PublishAsync(queueName, "test-payload", TestContext.Current.CancellationToken);
-        var reader = fixture.QueueReader;
+        var reader = fixture.Broker;
 
         RawMessage? received = null;
         await foreach (var msg in reader.ReadMessagesAsync(queueName, TestContext.Current.CancellationToken).Take(1))
@@ -47,7 +47,7 @@ public sealed class RabbitMqQueueReaderTests(RabbitMqFixture fixture)
         {
             await fixture.PublishAsync(queueName, $"msg-{i}", TestContext.Current.CancellationToken);
         }
-        var reader = fixture.QueueReader;
+        var reader = fixture.Broker;
 
         var received = 0;
         await foreach (var _ in reader.ReadMessagesAsync(queueName, TestContext.Current.CancellationToken).Take(count))
@@ -67,7 +67,7 @@ public sealed class RabbitMqQueueReaderTests(RabbitMqFixture fixture)
         {
             await fixture.PublishAsync(queueName, $"msg-{i}", TestContext.Current.CancellationToken);
         }
-        var reader = fixture.QueueReader;
+        var reader = fixture.Broker;
 
         // Take(count) disposes the channel on completion
         await foreach (var _ in reader.ReadMessagesAsync(queueName, TestContext.Current.CancellationToken).Take(count)) { }
@@ -80,7 +80,7 @@ public sealed class RabbitMqQueueReaderTests(RabbitMqFixture fixture)
     public async Task ListQueuesAsync_IncludesDeclaredQueue()
     {
         var queueName = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
-        var reader = fixture.QueueReader;
+        var reader = fixture.Broker;
 
         var queues = await reader.ListQueuesAsync(TestContext.Current.CancellationToken);
 
@@ -93,9 +93,9 @@ public sealed class RabbitMqQueueReaderTests(RabbitMqFixture fixture)
         var queueName = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
         await fixture.PublishAsync(queueName, "msg-1", TestContext.Current.CancellationToken);
         await fixture.PublishAsync(queueName, "msg-2", TestContext.Current.CancellationToken);
-        var reader = fixture.QueueReader;
+        var reader = fixture.Broker;
 
-        // The management API collects statistics periodically, so the message count
+        // The management API collects statistics periodically
         // may not reflect immediately after publish. Poll until the count is visible.
         QueueSummary? summary = null;
         for (var attempt = 0; attempt < 10; attempt++)

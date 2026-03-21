@@ -1,4 +1,4 @@
-﻿namespace Hosepipe.RabbitMQ;
+namespace Hosepipe.RabbitMQ;
 
 using global::RabbitMQ.Client;
 using Hosepipe.Abstractions;
@@ -7,13 +7,14 @@ using System.Runtime.CompilerServices;
 using System.Text;
 
 /// <summary>
-/// Reads messages from a RabbitMQ queue for inspection.
-/// Messages are fetched without acknowledgement and are returned to the queue
-/// when the channel is closed at the end of enumeration.
+/// RabbitMQ implementation of <see cref="IBroker"/>.
+/// Reads messages non-destructively (requeued via BasicNack on channel close)
+/// and retries failed messages by republishing them to their source queues.
+/// All operations on the same method share a single channel to keep delivery tags valid.
 /// </summary>
-internal sealed class RabbitMqQueueReader(
+internal sealed class RabbitMqBroker(
     IConnection connection,
-    RabbitMqManagementClient managementClient) : IQueueReader
+    RabbitMqManagementClient managementClient) : IBroker
 {
     /// <inheritdoc />
     public async Task<IReadOnlyList<QueueSummary>> ListQueuesAsync(CancellationToken cancellationToken = default)
@@ -46,11 +47,45 @@ internal sealed class RabbitMqQueueReader(
         }
     }
 
-    private static Dictionary<string, string> ExtractHeaders(IReadOnlyBasicProperties properties)
+    /// <inheritdoc />
+    public async Task<int> RetryAllAsync(
+        string queueName,
+        IErrorEnvelopeReader envelopeReader,
+        CancellationToken cancellationToken = default)
+    {
+        await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
+
+        var retried = 0;
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var result = await channel.BasicGetAsync(queueName, autoAck: false, cancellationToken);
+            if (result is null)
+            {
+                break;
+            }
+
+            var raw = new RawMessage { Body = result.Body.ToArray() };
+            var envelope = envelopeReader.Read(raw);
+
+            await channel.BasicPublishAsync(
+                exchange: string.Empty,
+                routingKey: envelope.SourceQueue,
+                body: Encoding.UTF8.GetBytes(envelope.Payload),
+                cancellationToken: cancellationToken);
+
+            await channel.BasicAckAsync(result.DeliveryTag, multiple: false, cancellationToken);
+            retried++;
+        }
+
+        return retried;
+    }
+
+    private static IReadOnlyDictionary<string, string> ExtractHeaders(IReadOnlyBasicProperties properties)
     {
         if (properties.Headers is null)
         {
-            return [];
+            return new Dictionary<string, string>();
         }
 
         var headers = new Dictionary<string, string>(properties.Headers.Count);

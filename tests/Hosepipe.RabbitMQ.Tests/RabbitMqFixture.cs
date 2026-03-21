@@ -2,8 +2,8 @@ namespace Hosepipe.RabbitMQ.Tests;
 
 using global::RabbitMQ.Client;
 using Hosepipe.Abstractions;
+using Hosepipe.Extensions;
 using Hosepipe.RabbitMQ.Extensions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Text;
@@ -17,20 +17,19 @@ public sealed class RabbitMqFixture : IAsyncLifetime
     private IHost _host = null!;
 
     public IConnection Connection => _host.Services.GetRequiredService<IConnection>();
-    public IQueueReader QueueReader => _host.Services.GetRequiredService<IQueueReader>();
-    public IMessageRetrier MessageRetrier => _host.Services.GetRequiredService<IMessageRetrier>();
+    public IBroker Broker => _host.Services.GetRequiredService<IBroker>();
 
     public async ValueTask InitializeAsync()
     {
         await _container.StartAsync();
 
         var builder = Host.CreateEmptyApplicationBuilder(null);
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        builder.Services.AddHosepipe().WithRabbitMQBroker();
+        builder.Services.Configure<RabbitMqOptions>(options =>
         {
-            [$"{RabbitMqOptions.SectionName}:ConnectionString"] = _container.GetConnectionString(),
-            [$"{RabbitMqOptions.SectionName}:ManagementPort"] = _container.GetMappedPublicPort(15672).ToString()
+            options.ConnectionString = _container.GetConnectionString();
+            options.ManagementPort = _container.GetMappedPublicPort(15672);
         });
-        builder.Services.AddHosepipeRabbitMq();
         _host = builder.Build();
         await _host.StartAsync();
     }

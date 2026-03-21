@@ -12,10 +12,10 @@ public static class ServiceCollectionExtensions
     /// and an envelope reader registration (e.g. <see cref="AddHosepipeEnvelopeReader{TReader}"/>).
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <returns>The same service collection for chaining.</returns>
-    public static IServiceCollection AddHosepipe(this IServiceCollection services)
+    /// <returns>An <see cref="IHosepipeBuilder"/> for further configuration.</returns>
+    public static IHosepipeBuilder AddHosepipe(this IServiceCollection services)
     {
-        return services;
+        return new HosepipeBuilder(services);
     }
 
     /// <summary>
@@ -23,12 +23,12 @@ public static class ServiceCollectionExtensions
     /// Call this to support a messaging library''s specific envelope schema.
     /// </summary>
     /// <typeparam name="TReader">The envelope reader implementation to register.</typeparam>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The same service collection for chaining.</returns>
-    public static IServiceCollection AddHosepipeEnvelopeReader<TReader>(this IServiceCollection services)
+    /// <param name="builder">The Hosepipe builder.</param>
+    /// <returns>The same builder for chaining.</returns>
+    public static IHosepipeBuilder AddHosepipeEnvelopeReader<TReader>(this IHosepipeBuilder builder)
         where TReader : class, IErrorEnvelopeReader
     {
-        services.AddSingleton<IErrorEnvelopeReader, TReader>();
-        return services;
+        builder.Services.AddSingleton<IErrorEnvelopeReader, TReader>();
+        return builder;
     }
 }

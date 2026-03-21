@@ -11,7 +11,7 @@ public sealed class RabbitMqMessageRetrierTests(RabbitMqFixture fixture)
     public async Task RetryAllAsync_WithEmptyQueue_ReturnsZero()
     {
         var deadLetterQueue = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
-        var retrier = fixture.MessageRetrier;
+        var retrier = fixture.Broker;
 
         var count = await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader("irrelevant"), TestContext.Current.CancellationToken);
 
@@ -28,7 +28,7 @@ public sealed class RabbitMqMessageRetrierTests(RabbitMqFixture fixture)
         {
             await fixture.PublishAsync(deadLetterQueue, $"error-payload-{i}", TestContext.Current.CancellationToken);
         }
-        var retrier = fixture.MessageRetrier;
+        var retrier = fixture.Broker;
 
         var count = await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader(sourceQueue), TestContext.Current.CancellationToken);
 
@@ -44,7 +44,7 @@ public sealed class RabbitMqMessageRetrierTests(RabbitMqFixture fixture)
         {
             await fixture.PublishAsync(deadLetterQueue, $"error-payload-{i}", TestContext.Current.CancellationToken);
         }
-        var retrier = fixture.MessageRetrier;
+        var retrier = fixture.Broker;
 
         await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader(sourceQueue), TestContext.Current.CancellationToken);
 
@@ -62,7 +62,7 @@ public sealed class RabbitMqMessageRetrierTests(RabbitMqFixture fixture)
         {
             await fixture.PublishAsync(deadLetterQueue, $"error-payload-{i}", TestContext.Current.CancellationToken);
         }
-        var retrier = fixture.MessageRetrier;
+        var retrier = fixture.Broker;
 
         await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader(sourceQueue), TestContext.Current.CancellationToken);
 

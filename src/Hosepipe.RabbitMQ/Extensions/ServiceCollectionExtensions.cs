@@ -18,10 +18,12 @@ public static class ServiceCollectionExtensions
     /// Configuration is bound from the <c>appsettings.json</c> section <see cref="RabbitMqOptions.SectionName"/>
     /// and validated with data annotations at startup.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The same service collection for chaining.</returns>
-    public static IServiceCollection AddHosepipeRabbitMq(this IServiceCollection services)
+    /// <param name="builder">The Hosepipe builder.</param>
+    /// <returns>The same builder for chaining.</returns>
+    public static IHosepipeBuilder WithRabbitMQBroker(this IHosepipeBuilder builder)
     {
+        var services = builder.Services;
+
         services.AddOptionsWithValidateOnStart<RabbitMqOptions>()
             .BindConfiguration(RabbitMqOptions.SectionName)
             .ValidateDataAnnotations();
@@ -35,10 +37,8 @@ public static class ServiceCollectionExtensions
                 client.BaseAddress = sp.GetRequiredService<IOptions<RabbitMqOptions>>().Value.GetManagementSettings().BaseUri)
             .AddHttpMessageHandler<BasicAuthHandler>();
 
-        services.AddSingleton<IQueueReader, RabbitMqQueueReader>();
-        services.AddSingleton<IMessageRetrier, RabbitMqMessageRetrier>();
+        services.AddSingleton<IBroker, RabbitMqBroker>();
 
-        services.AddHosepipe();
-        return services;
+        return builder;
     }
 }
