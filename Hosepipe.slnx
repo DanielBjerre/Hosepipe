@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Hosepipe.RabbitMQ/Hosepipe.RabbitMQ.csproj" />
+    <Project Path="src/Hosepipe/Hosepipe.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Hosepipe.RabbitMQ.Tests/Hosepipe.RabbitMQ.Tests.csproj" />
+    <Project Path="tests/Hosepipe.Tests/Hosepipe.Tests.csproj" />
+  </Folder>
+</Solution>
