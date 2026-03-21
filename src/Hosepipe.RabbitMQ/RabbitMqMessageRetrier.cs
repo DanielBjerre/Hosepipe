@@ -33,7 +33,9 @@ internal sealed class RabbitMqMessageRetrier : IMessageRetrier
         {
             var result = await channel.BasicGetAsync(queueName, autoAck: false, cancellationToken);
             if (result is null)
+            {
                 break;
+            }
 
             var raw = new RawMessage { Body = result.Body.ToArray() };
             var envelope = envelopeReader.Read(raw);

@@ -11,13 +11,14 @@ using System.Text;
 /// Messages are fetched without acknowledgement and are returned to the queue
 /// when the channel is closed at the end of enumeration.
 /// </summary>
-internal sealed class RabbitMqQueueReader : IQueueReader
+internal sealed class RabbitMqQueueReader(
+    IConnection connection,
+    RabbitMqManagementClient managementClient) : IQueueReader
 {
-    private readonly IConnection _connection;
-
-    public RabbitMqQueueReader(IConnection connection)
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<QueueSummary>> ListQueuesAsync(CancellationToken cancellationToken = default)
     {
-        _connection = connection;
+        return await managementClient.ListQueuesAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -25,13 +26,15 @@ internal sealed class RabbitMqQueueReader : IQueueReader
         string queueName,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await using var channel = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
+        await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
 
         while (!cancellationToken.IsCancellationRequested)
         {
             var result = await channel.BasicGetAsync(queueName, autoAck: false, cancellationToken);
             if (result is null)
+            {
                 yield break;
+            }
 
             yield return new RawMessage
             {
@@ -43,10 +46,12 @@ internal sealed class RabbitMqQueueReader : IQueueReader
         }
     }
 
-    private static IReadOnlyDictionary<string, string> ExtractHeaders(IReadOnlyBasicProperties properties)
+    private static Dictionary<string, string> ExtractHeaders(IReadOnlyBasicProperties properties)
     {
         if (properties.Headers is null)
-            return new Dictionary<string, string>();
+        {
+            return [];
+        }
 
         var headers = new Dictionary<string, string>(properties.Headers.Count);
         foreach (var (key, value) in properties.Headers)

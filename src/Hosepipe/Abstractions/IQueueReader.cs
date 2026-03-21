@@ -10,6 +10,13 @@ using Hosepipe.Models;
 public interface IQueueReader
 {
     /// <summary>
+    /// Lists all queues visible to the configured broker, along with the number of messages in each.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A read-only list of queue summaries, ordered by queue name.</returns>
+    Task<IReadOnlyList<QueueSummary>> ListQueuesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Reads all currently available messages from the specified queue.
     /// </summary>
     /// <param name="queueName">The name of the queue to read from.</param>

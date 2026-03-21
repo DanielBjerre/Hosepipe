@@ -61,12 +61,21 @@ Different messaging libraries produce different envelope schemas. Hosepipe must 
 - Follow the existing naming convention: the project/namespace root is `Hosepipe`.
 - Always make namespaces match the folder structure
 - Prefer returning immutable data structures (e.g. `IReadOnlyDictionary<string, string>` ) to prevent accidental modification.
+- Prefer positional records for DTOs, use named arguments when initializing
+- Prefer primary constructors
+- Always use braces around if statements, foreach etc, even if it is just a single line
+- Always decorate HttpClient using delegating handlers for auth, logging, etc. Prefer using Typed HttpClients
+- Always use IOptions pattern for configuration and bind to strongly typed classes
+- When using Options Pattern, validate options using `Validate` or `ValidateOnStart` with DataAnnotations where possible to ensure configuration is correct at startup
+
 
 ## Tests
 - Unit tests should cover all core library logic, especially the envelope reader abstraction and endpoint handlers.
 - Use XUnitV3 with the new Microsoft.Testing.Platform for test projects.
 - Prefer stubs over mocks for dependencies in unit tests. For example, create a simple `StubErrorEnvelopeReader` that returns hardcoded values for testing endpoint logic.
 - Prefer integration tests using an actual RabbitMQ instance (e.g. via Testcontainers) to verify the RabbitMQ adapter works correctly with real envelopes and queues.
+- Always Use Arrange, Act, Assert pattern when writing tests
+- Always pass the XUnit TestContext.CancellationToken to async test methods and any async calls within them to ensure proper test cancellation and timeouts.
 
 ## Project Structure (intended)
 

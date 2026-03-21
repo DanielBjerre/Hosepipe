@@ -38,6 +38,6 @@ internal static class HosepipeEndpoints
         CancellationToken cancellationToken)
     {
         var retried = await retrier.RetryAllAsync(queueName, envelopeReader, cancellationToken);
-        return Results.Ok(new RetryResult(retried));
+        return Results.Ok(new RetryResult(RetriedCount: retried));
     }
 }

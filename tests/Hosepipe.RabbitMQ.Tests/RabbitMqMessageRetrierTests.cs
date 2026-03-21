@@ -10,10 +10,10 @@ public sealed class RabbitMqMessageRetrierTests(RabbitMqFixture fixture)
     [Fact]
     public async Task RetryAllAsync_WithEmptyQueue_ReturnsZero()
     {
-        var deadLetterQueue = await fixture.DeclareQueueAsync();
-        var retrier = new RabbitMqMessageRetrier(fixture.Connection);
+        var deadLetterQueue = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
+        var retrier = fixture.MessageRetrier;
 
-        var count = await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader("irrelevant"));
+        var count = await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader("irrelevant"), TestContext.Current.CancellationToken);
 
         Assert.Equal(0, count);
     }
@@ -21,14 +21,16 @@ public sealed class RabbitMqMessageRetrierTests(RabbitMqFixture fixture)
     [Fact]
     public async Task RetryAllAsync_WithMessages_ReturnsRetriedCount()
     {
-        var sourceQueue = await fixture.DeclareQueueAsync();
-        var deadLetterQueue = await fixture.DeclareQueueAsync();
+        var sourceQueue = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
+        var deadLetterQueue = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
         const int messageCount = 3;
         for (var i = 0; i < messageCount; i++)
-            await fixture.PublishAsync(deadLetterQueue, $"error-payload-{i}");
-        var retrier = new RabbitMqMessageRetrier(fixture.Connection);
+        {
+            await fixture.PublishAsync(deadLetterQueue, $"error-payload-{i}", TestContext.Current.CancellationToken);
+        }
+        var retrier = fixture.MessageRetrier;
 
-        var count = await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader(sourceQueue));
+        var count = await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader(sourceQueue), TestContext.Current.CancellationToken);
 
         Assert.Equal(messageCount, count);
     }
@@ -36,31 +38,35 @@ public sealed class RabbitMqMessageRetrierTests(RabbitMqFixture fixture)
     [Fact]
     public async Task RetryAllAsync_WithMessages_EmptiesDeadLetterQueue()
     {
-        var sourceQueue = await fixture.DeclareQueueAsync();
-        var deadLetterQueue = await fixture.DeclareQueueAsync();
+        var sourceQueue = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
+        var deadLetterQueue = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
         for (var i = 0; i < 3; i++)
-            await fixture.PublishAsync(deadLetterQueue, $"error-payload-{i}");
-        var retrier = new RabbitMqMessageRetrier(fixture.Connection);
+        {
+            await fixture.PublishAsync(deadLetterQueue, $"error-payload-{i}", TestContext.Current.CancellationToken);
+        }
+        var retrier = fixture.MessageRetrier;
 
-        await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader(sourceQueue));
+        await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader(sourceQueue), TestContext.Current.CancellationToken);
 
-        var remaining = await fixture.GetMessageCountAsync(deadLetterQueue);
+        var remaining = await fixture.GetMessageCountAsync(deadLetterQueue, TestContext.Current.CancellationToken);
         Assert.Equal(0u, remaining);
     }
 
     [Fact]
     public async Task RetryAllAsync_WithMessages_RepublishesToSourceQueue()
     {
-        var sourceQueue = await fixture.DeclareQueueAsync();
-        var deadLetterQueue = await fixture.DeclareQueueAsync();
+        var sourceQueue = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
+        var deadLetterQueue = await fixture.DeclareQueueAsync(TestContext.Current.CancellationToken);
         const int messageCount = 2;
         for (var i = 0; i < messageCount; i++)
-            await fixture.PublishAsync(deadLetterQueue, $"error-payload-{i}");
-        var retrier = new RabbitMqMessageRetrier(fixture.Connection);
+        {
+            await fixture.PublishAsync(deadLetterQueue, $"error-payload-{i}", TestContext.Current.CancellationToken);
+        }
+        var retrier = fixture.MessageRetrier;
 
-        await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader(sourceQueue));
+        await retrier.RetryAllAsync(deadLetterQueue, new StubEnvelopeReader(sourceQueue), TestContext.Current.CancellationToken);
 
-        var count = await fixture.GetMessageCountAsync(sourceQueue);
+        var count = await fixture.GetMessageCountAsync(sourceQueue, TestContext.Current.CancellationToken);
         Assert.Equal((uint)messageCount, count);
     }
 
