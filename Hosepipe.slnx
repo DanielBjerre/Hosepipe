@@ -2,9 +2,11 @@
   <Folder Name="/src/">
     <Project Path="src/Hosepipe.Brokers.RabbitMQ/Hosepipe.Brokers.RabbitMQ.csproj" />
     <Project Path="src/Hosepipe/Hosepipe.csproj" />
+    <Project Path="src/Hosepipe.ErrorEnvelopeReaders.EasyNetQ/Hosepipe.ErrorEnvelopeReaders.EasyNetQ.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hosepipe.Brokers.RabbitMQ.Tests/Hosepipe.Brokers.RabbitMQ.Tests.csproj" />
+    <Project Path="tests/Hosepipe.ErrorEnvelopeReaders.EasyNetQ.Tests/Hosepipe.ErrorEnvelopeReaders.EasyNetQ.Tests.csproj" />
     <Project Path="tests/Hosepipe.Tests/Hosepipe.Tests.csproj" />
   </Folder>
 </Solution>
