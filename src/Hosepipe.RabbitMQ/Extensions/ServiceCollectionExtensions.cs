@@ -13,8 +13,8 @@ public static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds Hosepipe services backed by RabbitMQ.
-    /// Registers <see cref="IQueueReader"/> and <see cref="IMessageRetrier"/> implementations
-    /// and manages the RabbitMQ <see cref="IConnection"/> lifecycle as a hosted service.
+    /// Registers the <see cref="IBroker"/> implementation and manages the RabbitMQ
+    /// <see cref="IConnection"/> lifecycle as a hosted service.
     /// Configuration is bound from the <c>appsettings.json</c> section <see cref="RabbitMqOptions.SectionName"/>
     /// and validated with data annotations at startup.
     /// </summary>

@@ -4,7 +4,7 @@ using Hosepipe.Models;
 
 /// <summary>
 /// Extracts normalized <see cref="ErrorEnvelopeInfo"/> from a raw queue message.
-/// Implement this interface to support a specific messaging library''s envelope format.
+/// Implement this interface to support a specific messaging library's envelope format.
 /// </summary>
 public interface IErrorEnvelopeReader
 {

@@ -8,8 +8,8 @@ public static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds core Hosepipe services to the service collection.
-    /// Must be paired with a broker-specific registration (e.g. <c>AddHosepipeRabbitMq</c>)
-    /// and an envelope reader registration (e.g. <see cref="AddHosepipeEnvelopeReader{TReader}"/>).
+    /// Chain broker-specific registrations (e.g. <c>WithRabbitMQBroker</c>)
+    /// and an envelope reader registration (e.g. <see cref="AddHosepipeEnvelopeReader{TReader}"/>) on the returned builder.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>An <see cref="IHosepipeBuilder"/> for further configuration.</returns>
@@ -20,7 +20,7 @@ public static class ServiceCollectionExtensions
 
     /// <summary>
     /// Registers a custom <see cref="IErrorEnvelopeReader"/> implementation.
-    /// Call this to support a messaging library''s specific envelope schema.
+    /// Call this to support a messaging library's specific envelope schema.
     /// </summary>
     /// <typeparam name="TReader">The envelope reader implementation to register.</typeparam>
     /// <param name="builder">The Hosepipe builder.</param>
