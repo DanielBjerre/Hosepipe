@@ -1,4 +1,4 @@
-namespace Hosepipe.RabbitMQ.Tests;
+namespace Hosepipe.Brokers.RabbitMQ.Tests;
 
 using Hosepipe.Abstractions;
 using Hosepipe.Models;

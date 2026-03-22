@@ -1,9 +1,9 @@
-﻿namespace Hosepipe.RabbitMQ.Extensions;
+﻿namespace Hosepipe.Brokers.RabbitMQ.Extensions;
 
 using global::RabbitMQ.Client;
 using Hosepipe.Abstractions;
 using Hosepipe.Extensions;
-using Hosepipe.RabbitMQ;
+using Hosepipe.Brokers.RabbitMQ;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;

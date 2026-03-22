@@ -5,6 +5,7 @@ using Hosepipe.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using System.Runtime.CompilerServices;
 
 internal static class HosepipeEndpoints
 {
@@ -23,7 +24,7 @@ internal static class HosepipeEndpoints
         string queueName,
         IBroker broker,
         IErrorEnvelopeReader envelopeReader,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var message in broker.ReadMessagesAsync(queueName, cancellationToken))
         {

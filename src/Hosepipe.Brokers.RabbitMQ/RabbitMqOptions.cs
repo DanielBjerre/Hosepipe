@@ -1,4 +1,4 @@
-namespace Hosepipe.RabbitMQ;
+namespace Hosepipe.Brokers.RabbitMQ;
 
 using System.ComponentModel.DataAnnotations;
 

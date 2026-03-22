@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Hosepipe.RabbitMQ\Hosepipe.RabbitMQ.csproj" />
+    <ProjectReference Include="..\..\src\Hosepipe.Brokers.RabbitMQ\Hosepipe.Brokers.RabbitMQ.csproj" />
   </ItemGroup>
 
 </Project>

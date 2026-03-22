@@ -1,4 +1,4 @@
-namespace Hosepipe.RabbitMQ;
+namespace Hosepipe.Brokers.RabbitMQ;
 
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;

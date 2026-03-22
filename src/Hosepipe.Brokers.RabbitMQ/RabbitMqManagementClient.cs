@@ -1,4 +1,4 @@
-namespace Hosepipe.RabbitMQ;
+namespace Hosepipe.Brokers.RabbitMQ;
 
 using Hosepipe.Models;
 using System.Text.Json;
