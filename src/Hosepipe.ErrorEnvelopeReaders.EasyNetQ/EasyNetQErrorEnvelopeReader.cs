@@ -1,5 +1,7 @@
 namespace Hosepipe.ErrorEnvelopeReaders.EasyNetQ;
 
+using global::EasyNetQ;
+using global::EasyNetQ.SystemMessages;
 using Hosepipe.Abstractions;
 using Hosepipe.Models;
 using System.Text;
@@ -15,61 +17,61 @@ using System.Text.Json;
 /// envelope, which is the queue the message was being consumed from when it failed. This matches
 /// the default-exchange routing used by <c>IBroker.RetryAllAsync</c>.
 /// </remarks>
-public sealed class EasyNetQErrorEnvelopeReader : IErrorEnvelopeReader<EasyNetQEnvelope>
+public sealed class EasyNetQErrorEnvelopeReader : IErrorEnvelopeReader<Error>
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <inheritdoc />
-    public EasyNetQEnvelope Deserialize(RawMessage message)
+    public Error Deserialize(RawMessage message)
     {
         var json = Encoding.UTF8.GetString(message.Body.Span);
-        return JsonSerializer.Deserialize<EasyNetQEnvelope>(json, JsonOptions)
+        return JsonSerializer.Deserialize<Error>(json, JsonOptions)
             ?? throw new InvalidOperationException(
                 "Failed to deserialize EasyNetQ error envelope: the message body produced a null result.");
     }
 
     /// <inheritdoc />
-    public ErrorEnvelopeInfo Read(EasyNetQEnvelope envelope) =>
+    public ErrorEnvelopeInfo Read(Error error) =>
         new()
         {
-            Payload = envelope.Message,
-            SourceQueue = envelope.Queue,
-            ErrorReason = envelope.Exception,
-            ErrorContext = BuildErrorContext(envelope)
+            Payload = error.Message,
+            SourceQueue = error.Queue,
+            ErrorReason = error.Exception,
+            ErrorContext = BuildErrorContext(error)
         };
 
-    private static IReadOnlyDictionary<string, string> BuildErrorContext(EasyNetQEnvelope envelope)
+    private static IReadOnlyDictionary<string, string> BuildErrorContext(Error error)
     {
         var context = new Dictionary<string, string>();
 
-        if (!string.IsNullOrEmpty(envelope.Exchange))
+        if (!string.IsNullOrEmpty(error.Exchange))
         {
-            context["exchange"] = envelope.Exchange;
+            context["exchange"] = error.Exchange;
         }
 
-        if (!string.IsNullOrEmpty(envelope.RoutingKey))
+        if (!string.IsNullOrEmpty(error.RoutingKey))
         {
-            context["routingKey"] = envelope.RoutingKey;
+            context["routingKey"] = error.RoutingKey;
         }
 
-        if (envelope.DateTime != default)
+        if (error.DateTime != default)
         {
-            context["dateTime"] = envelope.DateTime.ToString("O");
+            context["dateTime"] = error.DateTime.ToString("O");
         }
 
-        if (!string.IsNullOrEmpty(envelope.BasicProperties?.Type))
+        if (!string.IsNullOrEmpty(error.BasicProperties.Type))
         {
-            context["messageType"] = envelope.BasicProperties.Type;
+            context["messageType"] = error.BasicProperties.Type;
         }
 
-        if (!string.IsNullOrEmpty(envelope.BasicProperties?.CorrelationId))
+        if (!string.IsNullOrEmpty(error.BasicProperties.CorrelationId))
         {
-            context["correlationId"] = envelope.BasicProperties.CorrelationId;
+            context["correlationId"] = error.BasicProperties.CorrelationId;
         }
 
-        if (!string.IsNullOrEmpty(envelope.BasicProperties?.MessageId))
+        if (!string.IsNullOrEmpty(error.BasicProperties.MessageId))
         {
-            context["messageId"] = envelope.BasicProperties.MessageId;
+            context["messageId"] = error.BasicProperties.MessageId;
         }
 
         return context;

@@ -38,8 +38,7 @@ public sealed class EasyNetQIntegrationTests(EasyNetQFixture fixture)
         Assert.NotEmpty(envelope.Queue);
         Assert.Contains("Intentional deserialization test failure", envelope.Exception);
         Assert.NotEqual(default, envelope.DateTime);
-        Assert.NotNull(envelope.BasicProperties);
-        Assert.NotEmpty(envelope.BasicProperties!.Type!);
+        Assert.NotEmpty(envelope.BasicProperties.Type!);
     }
 
     [Fact]

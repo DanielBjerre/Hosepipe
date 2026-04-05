@@ -1,37 +1,50 @@
-namespace Hosepipe.ErrorEnvelopeReaders.EasyNetQ.Tests;
+﻿namespace Hosepipe.ErrorEnvelopeReaders.EasyNetQ.Tests;
 
+using global::EasyNetQ;
+using global::EasyNetQ.SystemMessages;
 using Hosepipe.Abstractions;
 using Hosepipe.Models;
 using System.Text;
+using System.Text.Json;
 
 public class EasyNetQErrorEnvelopeReaderTests
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     private readonly EasyNetQErrorEnvelopeReader _reader = new();
 
-    private static RawMessage ToRawMessage(string json) =>
-        new() { Body = Encoding.UTF8.GetBytes(json) };
+    private static RawMessage ToRawMessage(Error error) =>
+        new() { Body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(error, JsonOptions)) };
+
+    private static Error BuildError(
+        string routingKey = "",
+        string exchange = "",
+        string queue = "",
+        string exception = "",
+        string message = "",
+        DateTime dateTime = default,
+        MessageProperties? basicProperties = null) =>
+        new(routingKey, exchange, queue, exception, message, dateTime, basicProperties ?? new MessageProperties());
 
     [Fact]
     public void Deserialize_WithValidJson_ReturnsPopulatedEnvelope()
     {
-        // Arrange
-        var json = """
+        // Arrange – construct the real EasyNetQ error model and serialize it
+        var error = new Error(
+            routingKey: "orders.created",
+            exchange: "orders-exchange",
+            queue: "orders-queue",
+            exception: "System.Exception: error",
+            message: "{\"id\":1}",
+            dateTime: new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc),
+            basicProperties: new MessageProperties
             {
-                "routingKey": "orders.created",
-                "exchange": "orders-exchange",
-                "queue": "orders-queue",
-                "message": "{\"id\":1}",
-                "exception": "System.Exception: error",
-                "dateTime": "2024-01-15T10:00:00+00:00",
-                "basicProperties": {
-                    "contentType": "application/json",
-                    "correlationId": "corr-123",
-                    "messageId": "msg-456",
-                    "type": "MyApp.OrderMessage:MyApp"
-                }
-            }
-            """;
-        var raw = ToRawMessage(json);
+                ContentType = "application/json",
+                CorrelationId = "corr-123",
+                MessageId = "msg-456",
+                Type = "MyApp.OrderMessage:MyApp"
+            });
+        var raw = ToRawMessage(error);
 
         // Act
         var envelope = _reader.Deserialize(raw);
@@ -42,18 +55,26 @@ public class EasyNetQErrorEnvelopeReaderTests
         Assert.Equal("orders-queue", envelope.Queue);
         Assert.Equal("{\"id\":1}", envelope.Message);
         Assert.Equal("System.Exception: error", envelope.Exception);
-        Assert.Equal(new DateTimeOffset(2024, 1, 15, 10, 0, 0, TimeSpan.Zero), envelope.DateTime);
-        Assert.Equal("application/json", envelope.BasicProperties?.ContentType);
-        Assert.Equal("corr-123", envelope.BasicProperties?.CorrelationId);
-        Assert.Equal("msg-456", envelope.BasicProperties?.MessageId);
-        Assert.Equal("MyApp.OrderMessage:MyApp", envelope.BasicProperties?.Type);
+        Assert.Equal(new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc), envelope.DateTime);
+        Assert.Equal("application/json", envelope.BasicProperties.ContentType);
+        Assert.Equal("corr-123", envelope.BasicProperties.CorrelationId);
+        Assert.Equal("msg-456", envelope.BasicProperties.MessageId);
+        Assert.Equal("MyApp.OrderMessage:MyApp", envelope.BasicProperties.Type);
     }
 
     [Fact]
-    public void Deserialize_WithEmptyJsonObject_UsesDefaultValues()
+    public void Deserialize_WithDefaultEnvelope_UsesDefaultValues()
     {
-        // Arrange
-        var raw = ToRawMessage("{}");
+        // Arrange – a real EasyNetQ error always has a MessageProperties object
+        var error = new Error(
+            routingKey: "",
+            exchange: "",
+            queue: "",
+            exception: "",
+            message: "",
+            dateTime: new DateTime(1, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            basicProperties: new MessageProperties());
+        var raw = ToRawMessage(error);
 
         // Act
         var envelope = _reader.Deserialize(raw);
@@ -64,14 +85,16 @@ public class EasyNetQErrorEnvelopeReaderTests
         Assert.Equal("", envelope.Message);
         Assert.Equal("", envelope.Exception);
         Assert.Equal(default, envelope.DateTime);
-        Assert.Null(envelope.BasicProperties);
+        Assert.Null(envelope.BasicProperties.Type);
+        Assert.Null(envelope.BasicProperties.CorrelationId);
+        Assert.Null(envelope.BasicProperties.MessageId);
     }
 
     [Fact]
-    public void Deserialize_WithNullJson_ThrowsInvalidOperationException()
+    public void Deserialize_WithNullJsonLiteral_ThrowsInvalidOperationException()
     {
-        // Arrange
-        var raw = ToRawMessage("null");
+        // Arrange – "null" is valid JSON but cannot produce an envelope instance
+        var raw = new RawMessage { Body = Encoding.UTF8.GetBytes("null") };
 
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() => _reader.Deserialize(raw));
@@ -81,10 +104,10 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_MapsPayloadFromMessage()
     {
         // Arrange
-        var envelope = new EasyNetQEnvelope(Message: "{\"id\":1}");
+        var error = BuildError(message: "{\"id\":1}");
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.Equal("{\"id\":1}", info.Payload);
@@ -94,10 +117,10 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_MapsSourceQueueFromQueue()
     {
         // Arrange
-        var envelope = new EasyNetQEnvelope(Queue: "orders-queue");
+        var error = BuildError(queue: "orders-queue");
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.Equal("orders-queue", info.SourceQueue);
@@ -107,10 +130,10 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_MapsErrorReasonFromException()
     {
         // Arrange
-        var envelope = new EasyNetQEnvelope(Exception: "System.Exception: something failed");
+        var error = BuildError(exception: "System.Exception: something failed");
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.Equal("System.Exception: something failed", info.ErrorReason);
@@ -120,10 +143,10 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_ErrorContext_IncludesExchangeWhenSet()
     {
         // Arrange
-        var envelope = new EasyNetQEnvelope(Exchange: "orders-exchange");
+        var error = BuildError(exchange: "orders-exchange");
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.Equal("orders-exchange", info.ErrorContext["exchange"]);
@@ -133,10 +156,10 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_ErrorContext_IncludesRoutingKeyWhenSet()
     {
         // Arrange
-        var envelope = new EasyNetQEnvelope(RoutingKey: "orders.created");
+        var error = BuildError(routingKey: "orders.created");
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.Equal("orders.created", info.ErrorContext["routingKey"]);
@@ -146,11 +169,11 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_ErrorContext_IncludesDateTimeWhenSet()
     {
         // Arrange
-        var dateTime = new DateTimeOffset(2024, 1, 15, 10, 0, 0, TimeSpan.Zero);
-        var envelope = new EasyNetQEnvelope(DateTime: dateTime);
+        var dateTime = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+        var error = BuildError(dateTime: dateTime);
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.Equal(dateTime.ToString("O"), info.ErrorContext["dateTime"]);
@@ -160,10 +183,10 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_ErrorContext_IncludesMessageTypeWhenSet()
     {
         // Arrange
-        var envelope = new EasyNetQEnvelope(BasicProperties: new EasyNetQBasicProperties(Type: "MyApp.OrderMessage:MyApp"));
+        var error = BuildError(basicProperties: new MessageProperties { Type = "MyApp.OrderMessage:MyApp" });
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.Equal("MyApp.OrderMessage:MyApp", info.ErrorContext["messageType"]);
@@ -173,10 +196,10 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_ErrorContext_IncludesCorrelationIdWhenSet()
     {
         // Arrange
-        var envelope = new EasyNetQEnvelope(BasicProperties: new EasyNetQBasicProperties(CorrelationId: "corr-123"));
+        var error = BuildError(basicProperties: new MessageProperties { CorrelationId = "corr-123" });
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.Equal("corr-123", info.ErrorContext["correlationId"]);
@@ -186,10 +209,10 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_ErrorContext_IncludesMessageIdWhenSet()
     {
         // Arrange
-        var envelope = new EasyNetQEnvelope(BasicProperties: new EasyNetQBasicProperties(MessageId: "msg-456"));
+        var error = BuildError(basicProperties: new MessageProperties { MessageId = "msg-456" });
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.Equal("msg-456", info.ErrorContext["messageId"]);
@@ -199,10 +222,10 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_ErrorContext_ExcludesEmptyExchange()
     {
         // Arrange
-        var envelope = new EasyNetQEnvelope(Exchange: "");
+        var error = BuildError(exchange: "");
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.DoesNotContain("exchange", info.ErrorContext.Keys);
@@ -212,10 +235,10 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_ErrorContext_ExcludesEmptyRoutingKey()
     {
         // Arrange
-        var envelope = new EasyNetQEnvelope(RoutingKey: "");
+        var error = BuildError(routingKey: "");
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.DoesNotContain("routingKey", info.ErrorContext.Keys);
@@ -225,23 +248,23 @@ public class EasyNetQErrorEnvelopeReaderTests
     public void Read_ErrorContext_ExcludesDefaultDateTime()
     {
         // Arrange
-        var envelope = new EasyNetQEnvelope(DateTime: default);
+        var error = BuildError(dateTime: default);
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.DoesNotContain("dateTime", info.ErrorContext.Keys);
     }
 
     [Fact]
-    public void Read_ErrorContext_WithNullBasicProperties_ExcludesBasicPropertyEntries()
+    public void Read_ErrorContext_WithUnsetMessageProperties_ExcludesBasicPropertyEntries()
     {
-        // Arrange
-        var envelope = new EasyNetQEnvelope(BasicProperties: null);
+        // Arrange – MessageProperties with all optional fields left at their defaults (null)
+        var error = BuildError(basicProperties: new MessageProperties());
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.DoesNotContain("messageType", info.ErrorContext.Keys);
@@ -250,25 +273,27 @@ public class EasyNetQErrorEnvelopeReaderTests
     }
 
     [Fact]
-    public void Read_WithFullEnvelope_BuildsCompleteErrorContext()
+    public void Read_WithFullError_BuildsCompleteErrorContext()
     {
         // Arrange
-        var dateTime = new DateTimeOffset(2024, 1, 15, 10, 0, 0, TimeSpan.Zero);
-        var envelope = new EasyNetQEnvelope(
-            RoutingKey: "orders.created",
-            Exchange: "orders-exchange",
-            Queue: "orders-queue",
-            Message: "{\"id\":1}",
-            Exception: "System.Exception: error",
-            DateTime: dateTime,
-            BasicProperties: new EasyNetQBasicProperties(
-                ContentType: "application/json",
-                CorrelationId: "corr-123",
-                MessageId: "msg-456",
-                Type: "MyApp.OrderMessage:MyApp"));
+        var dateTime = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+        var error = new Error(
+            routingKey: "orders.created",
+            exchange: "orders-exchange",
+            queue: "orders-queue",
+            exception: "System.Exception: error",
+            message: "{\"id\":1}",
+            dateTime: dateTime,
+            basicProperties: new MessageProperties
+            {
+                ContentType = "application/json",
+                CorrelationId = "corr-123",
+                MessageId = "msg-456",
+                Type = "MyApp.OrderMessage:MyApp"
+            });
 
         // Act
-        var info = _reader.Read(envelope);
+        var info = _reader.Read(error);
 
         // Assert
         Assert.Equal("{\"id\":1}", info.Payload);
@@ -287,8 +312,15 @@ public class EasyNetQErrorEnvelopeReaderTests
     {
         // Arrange
         IErrorEnvelopeReader reader = _reader;
-        var json = """{"queue":"orders-queue","message":"payload","exception":"an error"}""";
-        var raw = ToRawMessage(json);
+        var error = new Error(
+            routingKey: "",
+            exchange: "",
+            queue: "orders-queue",
+            exception: "an error",
+            message: "payload",
+            dateTime: DateTime.UtcNow,
+            basicProperties: new MessageProperties());
+        var raw = ToRawMessage(error);
 
         // Act
         var info = reader.Read(raw);
